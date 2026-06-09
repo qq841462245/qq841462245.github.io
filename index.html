@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>掼蛋训练桌</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>掼蛋训练桌</h1>
+          <p id="roundStatus">准备开局</p>
+        </div>
+        <div class="controls">
+          <div class="match-strip" aria-label="训练进度">
+            <span id="roundBadge" class="status-chip">第 1 局</span>
+            <span id="levelBadge" class="status-chip">打 2</span>
+            <span id="scoreBadge" class="status-chip">连续训练</span>
+          </div>
+          <button id="newGameBtn" class="primary-btn" type="button">重开训练</button>
+        </div>
+      </header>
+
+      <section class="table-grid" aria-label="牌桌">
+        <aside class="side-panel">
+          <section class="memory-panel">
+            <div class="panel-title">
+              <h2>记牌板</h2>
+              <button id="toggleMemoryBtn" class="icon-btn" type="button" title="切换详细记牌">≡</button>
+            </div>
+            <div id="memoryBoard" class="memory-board"></div>
+          </section>
+          <section class="log-panel">
+            <div class="panel-title">
+              <h2>牌局记录</h2>
+            </div>
+            <ol id="moveLog" class="move-log"></ol>
+          </section>
+        </aside>
+
+        <section class="table">
+          <div id="playerNorth" class="player-seat north"></div>
+          <div id="playerWest" class="player-seat west"></div>
+          <div id="centerPile" class="center-pile"></div>
+          <div id="playerEast" class="player-seat east"></div>
+          <div id="playerSouth" class="player-seat south"></div>
+        </section>
+      </section>
+
+      <section class="hand-zone">
+        <div class="action-bar">
+          <div id="selectionInfo" class="selection-info">请选择手牌</div>
+          <div class="play-actions">
+            <button id="hintBtn" type="button">提示</button>
+            <button id="passBtn" type="button">过牌</button>
+            <button id="playBtn" class="primary-btn" type="button">出牌</button>
+          </div>
+        </div>
+        <div id="hand" class="hand" aria-label="你的手牌"></div>
+      </section>
+
+      <section id="reviewPanel" class="review-panel" hidden>
+        <div class="panel-title">
+          <h2>本局复盘</h2>
+          <button id="closeReviewBtn" class="icon-btn" type="button" title="收起复盘">×</button>
+        </div>
+        <div id="reviewContent" class="review-content"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
