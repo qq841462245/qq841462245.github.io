@@ -125,6 +125,30 @@ h2 {
   justify-content: flex-end;
 }
 
+.mode-toggle {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.mode-toggle button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mode-toggle button.active {
+  background: var(--felt);
+  color: #fff;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -449,6 +473,18 @@ button.card {
   min-width: 180px;
 }
 
+.coach-tip {
+  max-width: 620px;
+  margin-top: 6px;
+  border-left: 3px solid var(--gold);
+  color: #5f4214;
+  background: #fff8e8;
+  padding: 7px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .hand {
   justify-content: flex-start;
   align-items: flex-end;
@@ -578,7 +614,7 @@ button.card {
 
   .app-shell {
     width: 100%;
-    padding: 0 0 176px;
+    padding: 0 0 220px;
   }
 
   .topbar {
@@ -609,6 +645,10 @@ button.card {
   .controls > *,
   .play-actions > * {
     flex: 1;
+  }
+
+  .mode-toggle {
+    width: 100%;
   }
 
   .match-strip {
@@ -694,6 +734,11 @@ button.card {
     font-size: 13px;
   }
 
+  .coach-tip {
+    max-width: none;
+    font-size: 12px;
+  }
+
   .hand {
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -711,9 +756,9 @@ button.card {
   .review-panel {
     inset: 8px;
     width: auto;
-    max-height: calc(100vh - 176px);
+    max-height: calc(100vh - 220px);
     right: 8px;
-    bottom: 168px;
+    bottom: 212px;
   }
 
   .player-seat {
