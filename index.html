@@ -14,6 +14,10 @@
           <p id="roundStatus">准备开局</p>
         </div>
         <div class="controls">
+          <div class="mode-toggle" aria-label="训练模式">
+            <button id="noviceModeBtn" type="button">新手</button>
+            <button id="advancedModeBtn" type="button">进阶</button>
+          </div>
           <div class="match-strip" aria-label="训练进度">
             <span id="roundBadge" class="status-chip">第 1 局</span>
             <span id="levelBadge" class="status-chip">打 2</span>
@@ -51,7 +55,10 @@
 
       <section class="hand-zone">
         <div class="action-bar">
-          <div id="selectionInfo" class="selection-info">请选择手牌</div>
+          <div>
+            <div id="selectionInfo" class="selection-info">请选择手牌</div>
+            <div id="coachTip" class="coach-tip" hidden></div>
+          </div>
           <div class="play-actions">
             <button id="hintBtn" type="button">提示</button>
             <button id="passBtn" type="button">过牌</button>
