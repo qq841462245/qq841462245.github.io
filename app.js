@@ -49,9 +49,14 @@ const COMBO_NAMES = {
   jokerBomb: "天王炸",
 };
 const TOTAL_BY_RANK = Object.fromEntries([...RANKS.map((rank) => [rank, 8]), ["SJ", 2], ["BJ", 2]]);
+const TRAINING_MODES = {
+  novice: "新手模式",
+  advanced: "进阶模式",
+};
 const els = {};
 let match;
 let state;
+let trainingMode = localStorage.getItem("guandanTrainingMode") || "novice";
 
 function init() {
   [
@@ -68,6 +73,7 @@ function init() {
     "playerSouth",
     "centerPile",
     "selectionInfo",
+    "coachTip",
     "hintBtn",
     "passBtn",
     "playBtn",
@@ -76,6 +82,8 @@ function init() {
     "reviewContent",
     "closeReviewBtn",
     "toggleMemoryBtn",
+    "noviceModeBtn",
+    "advancedModeBtn",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -91,9 +99,23 @@ function init() {
     state.showFullMemory = !state.showFullMemory;
     render();
   });
+  els.noviceModeBtn.addEventListener("click", () => setTrainingMode("novice"));
+  els.advancedModeBtn.addEventListener("click", () => setTrainingMode("advanced"));
 
   resetMatch();
   startGame();
+}
+
+function setTrainingMode(mode) {
+  trainingMode = mode;
+  localStorage.setItem("guandanTrainingMode", mode);
+  if (state) {
+    state.mode = mode;
+    state.coachTip = "";
+    state.pendingAdviceKey = "";
+    state.message = mode === "novice" ? "已切换到新手模式：会在关键出牌前提醒" : "已切换到进阶模式：只在终局复盘";
+    render();
+  }
 }
 
 function resetMatch() {
@@ -148,6 +170,9 @@ function startGame() {
     finishedOrder: [],
     history: [],
     userNotes: [],
+    mode: trainingMode,
+    coachTip: "",
+    pendingAdviceKey: "",
     moveNo: 1,
     roundNo: match.roundNo,
     roundResult: null,
@@ -469,6 +494,14 @@ function playSelected() {
     return;
   }
 
+  const advice = state.mode === "novice" ? buildPlayAdvice(selectedCards, combo) : null;
+  if (shouldPauseForAdvice(advice)) {
+    showAdvice(advice);
+    render();
+    return;
+  }
+
+  clearAdvice();
   noteUserPlay(selectedCards, combo);
   commitPlay(0, selectedCards, combo);
   state.selected.clear();
@@ -479,6 +512,13 @@ function playSelected() {
 function passTurn() {
   if (state.over || state.current !== 0 || !state.lastPlay) return;
   const response = bestResponseFor(0, state.lastPlay.combo, false);
+  const advice = state.mode === "novice" ? buildPassAdvice(response) : null;
+  if (shouldPauseForAdvice(advice)) {
+    showAdvice(advice);
+    render();
+    return;
+  }
+  clearAdvice();
   state.userNotes.push({
     kind: "pass",
     moveNo: state.moveNo,
@@ -498,6 +538,7 @@ function passTurn() {
 function selectHint() {
   if (state.over || state.current !== 0) return;
   const hint = state.lastPlay ? bestResponseFor(0, state.lastPlay.combo, true) : bestLeadFor(0);
+  clearAdvice();
   if (!hint) {
     state.message = state.lastPlay ? "建议过牌" : "暂时没有推荐牌";
     render();
@@ -533,6 +574,108 @@ function noteUserPlay(cards, combo) {
     leftRemainingBefore: state.players[1].hand.length,
     remainingBefore: hand.length,
   });
+}
+
+function buildPlayAdvice(cards, combo) {
+  const hand = state.players[0].hand;
+  const targetOwner = state.lastPlay?.player;
+  const targetCombo = state.lastPlay?.combo || null;
+  const key = `play:${state.moveNo}:${cards.map((card) => card.id).sort().join("|")}`;
+  const finishing = cards.length === hand.length;
+
+  if (sameTeam(0, targetOwner) && !finishing) {
+    return {
+      key,
+      message: `这手会压住对家刚出的 ${state.lastPlay.combo.name}。除非你能直接走完，否则先让对家继续控牌。再点一次“出牌”仍会按你的选择打。`,
+    };
+  }
+
+  const targetDanger = typeof targetOwner === "number" && !sameTeam(0, targetOwner) && playerDanger(targetOwner);
+  if (state.lastPlay && isBombLike(combo) && !isBombLike(targetCombo) && !targetDanger && !finishing) {
+    return {
+      key,
+      message: `这手要用 ${combo.name} 压普通牌，成本偏高。炸弹最好留给拦快走的人、保对家，或炸完你能连续走。`,
+    };
+  }
+
+  const beforeCounts = countBy(hand.map((card) => card.rank));
+  const brokeRanks = [...new Set(cards.map((card) => card.rank))]
+    .filter((rank) => beforeCounts[rank] >= 2 && cards.filter((card) => card.rank === rank).length < beforeCounts[rank]);
+  if (combo.type === "single" && brokeRanks.length && !finishing) {
+    return {
+      key,
+      message: `这手单张拆到了 ${brokeRanks.map(rankName).join("、")} 的对子或三张。先想清楚拆完剩牌还能不能成组；不确定就优先找不拆牌的出法。`,
+    };
+  }
+
+  const partner = state.players[2];
+  if (!state.lastPlay && partner && !partner.finished && partner.hand.length <= 5 && cards.length <= 2 && hand.length > partner.hand.length + 4) {
+    return {
+      key,
+      message: `对家只剩 ${partner.hand.length} 张了。你现在自由出牌，先想他前面主动出过什么牌型，尽量喂他容易接的牌，不要只清自己的散牌。`,
+    };
+  }
+
+  const suggested = state.lastPlay ? bestResponseFor(0, targetCombo, true) : bestLeadFor(0);
+  if (suggested && !sameCardSet(suggested.cards, cards) && !isBombLike(combo)) {
+    const chosenCost = state.lastPlay
+      ? responseCost({ cards, combo }, 0, targetCombo)
+      : leadScore({ cards, combo }, 0);
+    const suggestedCost = state.lastPlay
+      ? responseCost(suggested, 0, targetCombo)
+      : leadScore(suggested, 0);
+    if (chosenCost - suggestedCost >= 520) {
+      return {
+        key,
+        message: `这手能打，但不够经济。更稳可以考虑 ${suggested.combo.name}（${suggested.cards.map(cardText).join(" ")}）。再点一次“出牌”继续当前选择。`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function buildPassAdvice(response) {
+  if (!response || !state.lastPlay || sameTeam(0, state.lastPlay.player)) return null;
+  const key = `pass:${state.moveNo}:${state.lastPlay.moveNo}`;
+  const targetPlayer = state.players[state.lastPlay.player];
+  if (playerDanger(state.lastPlay.player)) {
+    return {
+      key,
+      message: `${targetPlayer.name} 只剩 ${targetPlayer.hand.length} 张，你可以用 ${response.combo.name} 压住。新手模式建议先拦住快走的人，再考虑省牌。`,
+    };
+  }
+  const cost = responseCost(response, 0, state.lastPlay.combo);
+  if (!isBombLike(response.combo) && cost <= CHEAP_RESPONSE_LIMIT) {
+    return {
+      key,
+      message: `这手可以低成本接：${response.combo.name}（${response.cards.map(cardText).join(" ")}）。如果接完能继续出牌或送给对家，过牌就偏保守。`,
+    };
+  }
+  return null;
+}
+
+function sameCardSet(a, b) {
+  if (a.length !== b.length) return false;
+  const left = a.map((card) => card.id).sort().join("|");
+  const right = b.map((card) => card.id).sort().join("|");
+  return left === right;
+}
+
+function shouldPauseForAdvice(advice) {
+  if (!advice) return false;
+  return state.pendingAdviceKey !== advice.key;
+}
+
+function showAdvice(advice) {
+  state.pendingAdviceKey = advice.key;
+  state.coachTip = advice.message;
+  state.message = `${advice.message} 再点一次确认。`;
+}
+
+function clearAdvice() {
+  state.coachTip = "";
+  state.pendingAdviceKey = "";
 }
 
 function commitPlay(playerId, cards, combo) {
@@ -925,6 +1068,7 @@ function render() {
   renderSeats();
   renderCenter();
   renderHand();
+  renderCoachTip();
   renderButtons();
   renderMemory();
   renderLog();
@@ -940,6 +1084,10 @@ function renderHeader() {
     ? `${state.roundResult.name}，升 ${state.roundResult.advance} 级`
     : teamText;
   els.newGameBtn.textContent = state.over && state.nextRoundLevel ? `继续下一局：打 ${state.nextRoundLevel}` : "重开训练";
+  els.noviceModeBtn.classList.toggle("active", state.mode === "novice");
+  els.advancedModeBtn.classList.toggle("active", state.mode === "advanced");
+  els.noviceModeBtn.setAttribute("aria-pressed", state.mode === "novice" ? "true" : "false");
+  els.advancedModeBtn.setAttribute("aria-pressed", state.mode === "advanced" ? "true" : "false");
 }
 
 function renderSeats() {
@@ -1003,8 +1151,19 @@ function renderHand() {
   }
 }
 
+function renderCoachTip() {
+  if (state.mode !== "novice" || !state.coachTip) {
+    els.coachTip.hidden = true;
+    els.coachTip.textContent = "";
+    return;
+  }
+  els.coachTip.hidden = false;
+  els.coachTip.textContent = state.coachTip;
+}
+
 function toggleSelect(cardId) {
   if (state.current !== 0 || state.over) return;
+  clearAdvice();
   if (state.selected.has(cardId)) {
     state.selected.delete(cardId);
   } else {
@@ -1112,6 +1271,18 @@ function renderReview() {
   const signals = buildSignalReview();
   const kingReads = buildKingReadReview();
   const typeSignals = buildTypeSignalReview();
+  const diagnosticsHtml = diagnostics.length
+    ? `<h3>明确失误</h3><ul class="diagnostic-list">${diagnostics.map((item) => `<li>${item}</li>`).join("")}</ul>`
+    : "";
+  const signalsHtml = signals.length
+    ? `<h3>本局信号推断</h3><ul class="signal-list">${signals.map((item) => `<li>${item}</li>`).join("")}</ul>`
+    : "";
+  const kingReadsHtml = kingReads.length
+    ? `<h3>王牌判断</h3><ul class="signal-list">${kingReads.map((item) => `<li>${item}</li>`).join("")}</ul>`
+    : "";
+  const typeSignalsHtml = typeSignals.length
+    ? `<h3>牌型表达</h3><ul class="signal-list">${typeSignals.map((item) => `<li>${item}</li>`).join("")}</ul>`
+    : "";
   const moveSummary = state.history
     .filter((entry) => entry.playerId === 0 && entry.action === "play")
     .reverse()
@@ -1125,13 +1296,10 @@ function renderReview() {
     </div>
     <h3>名次</h3>
     <ol>${rankItems}</ol>
-    <h3>明确失误</h3>
-    <ul class="diagnostic-list">${diagnostics.map((item) => `<li>${item}</li>`).join("")}</ul>
-    <h3>本局信号推断</h3>
-    <ul class="signal-list">${signals.map((item) => `<li>${item}</li>`).join("")}</ul>
-    ${kingReads.length ? `<h3>王牌判断</h3><ul class="signal-list">${kingReads.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
-    <h3>牌型表达</h3>
-    <ul class="signal-list">${typeSignals.map((item) => `<li>${item}</li>`).join("")}</ul>
+    ${diagnosticsHtml}
+    ${signalsHtml}
+    ${kingReadsHtml}
+    ${typeSignalsHtml}
     <h3>你的出牌线</h3>
     <ol>${moveSummary || "<li>本局没有主动出牌记录</li>"}</ol>
     <div class="review-actions">
@@ -1150,15 +1318,11 @@ function buildDiagnostics() {
   const splitGroups = notes.filter((note) => note.kind === "play" && note.brokeRanks.length && note.combo.type === "single");
   const partnerOvertakes = notes.filter((note) => note.kind === "play" && note.partnerOvertake);
   const soloFirst = notes.filter((note) => note.kind === "play" && note.partnerRemainingBefore <= 5 && note.remainingBefore > note.partnerRemainingBefore + 4);
-  const plays = notes.filter((note) => note.kind === "play");
-  const bombs = plays.filter((note) => isBombLike(note.combo));
   const rank = state.finishedOrder.indexOf(0) + 1;
   const diagnostics = [];
 
   if (rank > 2) {
-    diagnostics.push("<strong>整体问题：</strong>这一局你方没有拿到前两名。以后到中后段先看每个人还剩几张，谁只剩 5 张以内，就要优先考虑拦住他，而不是只清自己的牌。");
-  } else {
-    diagnostics.push("<strong>整体情况：</strong>这一局你方名次不错。复盘重点不只是赢没赢，而是看哪些手牌可以更早帮对家接牌。");
+    diagnostics.push("<strong>名次压力：</strong>你没有进前两名。中后段先看谁只剩 5 张以内，对手快走时优先拦截。");
   }
 
   if (missedBlocks.length) {
@@ -1167,8 +1331,6 @@ function buildDiagnostics() {
   } else if (passWithAnswer.length) {
     const sample = passWithAnswer[0];
     diagnostics.push(`<strong>第 ${sample.moveNo} 手可压未压：</strong>${sample.targetOwnerName} 出 ${sample.target.name}（${sample.targetText}），你可以用 ${sample.couldBeat.name} 接，但选择了过。正确逻辑是：如果接完能继续出成组牌，或者能把下一个牌权送给对家，就应该接；如果接完只剩散牌，才考虑放。`);
-  } else {
-    diagnostics.push("<strong>过牌：</strong>没有发现明显“该接却没接”的回合。下一步要练的是：过牌时顺手记住谁不要这种牌型。");
   }
 
   if (partnerOvertakes.length) {
@@ -1184,8 +1346,6 @@ function buildDiagnostics() {
   if (riskyBombs.length) {
     const sample = riskyBombs[0];
     diagnostics.push(`<strong>第 ${sample.moveNo} 手炸弹偏早：</strong>你用 ${sample.combo.name}（${sample.cardsText}）压普通牌。错在把最强的抢牌权工具提前交掉；正确逻辑是：炸弹优先留给三种情况：对手快走完、保护对家走完、你自己炸完能连续走。`);
-  } else if (bombs.length) {
-    diagnostics.push("<strong>炸弹：</strong>没有发现明显早炸。继续记住：炸弹不是“能炸就炸”，而是“必须拿回牌权时再炸”。");
   }
 
   if (splitGroups.length) {
@@ -1213,8 +1373,6 @@ function buildSignalReview() {
   if (partnerPassSummary) {
     const sample = partnerPasses[0];
     signals.push(`<strong>对家不想接什么：</strong>对家从第 ${sample.moveNo} 手开始，重复不要 ${partnerPassSummary}。这才算比较有用的信号。你拿到牌权时，不要反复给他这种牌型，要改看他主动出过什么。`);
-  } else {
-    signals.push("<strong>对家不想接什么：</strong>本局没有看到对家重复不要同一种普通牌型。读对家时，重点看他主动出过什么。");
   }
 
   if (partnerPlays.length) {
