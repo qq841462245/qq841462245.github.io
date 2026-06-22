@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>?????</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>?????</h1>
+          <p id="roundStatus">????</p>
+        </div>
+        <div class="controls">
+          <div class="mode-toggle" aria-label="????">
+            <button id="noviceModeBtn" type="button">????</button>
+            <button id="advancedModeBtn" type="button">??</button>
+          </div>
+          <div class="match-strip" aria-label="????">
+            <span id="roundBadge" class="status-chip">? 1 ?</span>
+            <span id="levelBadge" class="status-chip">? 2</span>
+            <span id="scoreBadge" class="status-chip">????</span>
+          </div>
+          <button id="newGameBtn" class="primary-btn" type="button">????</button>
+          <button id="backHomeBtn" type="button">????</button>
+        </div>
+      </header>
+
+      <section id="homeScreen" class="home-screen">
+        <div class="home-card single-card">
+          <div>
+            <span class="home-kicker">????</span>
+            <h2>AI ???</h2>
+            <p>?????????????????????????????????????????</p>
+          </div>
+          <div class="home-mode-actions">
+            <button id="startNoviceBtn" class="primary-btn" type="button">????</button>
+            <button id="startAdvancedBtn" type="button">????</button>
+          </div>
+        </div>
+
+        <div class="home-card multiplayer-card">
+          <div>
+            <span class="home-kicker">????</span>
+            <h2>????</h2>
+            <p>????????????????????????????????????????????</p>
+          </div>
+          <label class="profile-field">
+            <span>????</span>
+            <input id="playerNameInput" type="text" maxlength="12" placeholder="???????">
+          </label>
+          <div>
+            <span class="profile-label">????</span>
+            <div id="avatarGrid" class="avatar-grid" aria-label="????"></div>
+          </div>
+          <label class="profile-field">
+            <span>???</span>
+            <input id="roomCodeInput" type="text" maxlength="6" placeholder="???????????????">
+          </label>
+          <div class="home-mode-actions">
+            <button id="createRoomBtn" class="primary-btn" type="button">????</button>
+            <button id="joinRoomBtn" type="button">????</button>
+          </div>
+          <section id="multiplayerRoomPanel" class="room-panel" hidden>
+            <div class="room-title">
+              <strong id="roomCodeLabel">??</strong>
+              <button id="copyRoomBtn" type="button">??????</button>
+            </div>
+            <div id="roomSeatGrid" class="room-seat-grid" aria-label="????"></div>
+            <button id="startRoomBtn" class="primary-btn" type="button">???????</button>
+          </section>
+          <p id="multiplayerNotice" class="multiplayer-notice" hidden></p>
+        </div>
+      </section>
+
+      <div id="gameScreen" class="game-screen" hidden>
+      <section class="table-grid" aria-label="??">
+        <aside class="side-panel">
+          <section class="memory-panel">
+            <div class="panel-title">
+              <h2>???</h2>
+              <button id="toggleMemoryBtn" class="icon-btn" type="button" title="??????">?</button>
+            </div>
+            <div id="memoryBoard" class="memory-board"></div>
+          </section>
+          <section class="log-panel">
+            <div class="panel-title">
+              <h2>????</h2>
+            </div>
+            <ol id="moveLog" class="move-log"></ol>
+          </section>
+        </aside>
+
+        <section class="table">
+          <div id="playerNorth" class="player-seat north"></div>
+          <div id="playerWest" class="player-seat west"></div>
+          <div id="centerPile" class="center-pile"></div>
+          <div id="playerEast" class="player-seat east"></div>
+          <div id="playerSouth" class="player-seat south"></div>
+        </section>
+      </section>
+
+      <section class="hand-zone">
+        <div class="action-bar">
+          <div>
+            <div id="selectionInfo" class="selection-info">?????</div>
+            <div id="coachTip" class="coach-tip" hidden></div>
+          </div>
+          <div class="play-actions">
+            <button id="hintBtn" type="button">??</button>
+            <button id="passBtn" type="button">??</button>
+            <button id="playBtn" class="primary-btn" type="button">??</button>
+          </div>
+        </div>
+        <div id="hand" class="hand" aria-label="????"></div>
+      </section>
+
+      <section id="reviewPanel" class="review-panel" hidden>
+        <div class="panel-title">
+          <h2>????</h2>
+          <button id="closeReviewBtn" class="icon-btn" type="button" title="????">?</button>
+        </div>
+        <div id="reviewContent" class="review-content"></div>
+      </section>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
